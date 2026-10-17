@@ -1,0 +1,44 @@
+# Birdsnap at 95% sparsity (the paper's run).
+# Phase 2 trains the selector with GRPO and the extractor with cross-entropy.
+# The paper's run started from a warmup checkpoint distilled from a frozen DINOv2 (518 px, 100000 steps).
+# Train a similar one with configs/imagenet/imagenet_distill_dinov2.yaml.
+# Download the `init` checkpoint from https://huggingface.co/SreehariRamMohan/lookthere first:
+#   hf download SreehariRamMohan/lookthere imagenet/distill_pretrain/model.pt --local-dir lookthere_ckpts
+dataset: birdsnap
+data_root: ./birdsnap
+output_dir: runs/rl_birdsnap_95
+init: lookthere_ckpts/imagenet/distill_pretrain/model.pt
+augment: heavy
+cutmix_alpha: 1.0
+label_smoothing: 0.1
+img_size: 518
+batch_size: 32
+num_workers: 4
+
+# Hierarchical policy. Each stage adds one decision grid.
+# There are 33630 RL steps in total.
+grid_stages: [6, 18, 37]
+steps_per_stage: [11210, 11210, 11210]
+beta_init: 0.25
+beta_max: 5.0
+temperature: [1.0, 0.3]         # Linear decay during RL.
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+entropy_coeff: [1.0, 0.3, 0.1]  # Entropy bonus at the start, middle and end of RL.
+
+# GRPO
+num_samples: 8
+advantage_clip: 5.0
+min_group_std: 0.01
+
+# The reward is -CE + lam * 1[correct] * sparsity_reward(mask). See train.sparsity_reward.
+lam: 5.0
+sparsity_target: 0.05
+
+# The cosine learning rate schedule continues the step count of the warmup (see train.run_rl).
+selector_lr: 2.0e-5
+extractor_lr: 5.0e-5
+min_lr: 1.0e-6
+weight_decay: 0.02
+
+log_every: 20
+save_every: 5000

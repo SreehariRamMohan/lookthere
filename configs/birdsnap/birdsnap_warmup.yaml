@@ -1,0 +1,28 @@
+# Birdsnap (the paper's run).
+# Phase 1 trains the extractor on all patches before RL.
+# It trains for 33630 steps (30 epochs) at batch 32. The paper's 95% sparsity run started from a
+# checkpoint distilled on ImageNet instead (see configs/birdsnap/birdsnap_95_rl.yaml).
+# Train a similar one with configs/imagenet/imagenet_distill_dinov2.yaml.
+dataset: birdsnap
+data_root: ./birdsnap
+output_dir: runs/warmup_birdsnap
+augment: default
+img_size: 518
+batch_size: 32
+num_workers: 4
+
+steps: 33630
+schedule_steps: 33630           # Length of the cosine schedule
+lr: 5.0e-5                      # Learning rate of the extractor
+weight_decay: 0.02
+patch_drop: 0.0                
+patch_drop_start: 0.5
+
+# Selector architecture. The warmup only uses its CLS and register tokens.
+grid_stages: [6, 18, 37]
+beta_init: 0.25
+beta_max: 5.0
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+
+log_every: 20
+save_every: 1121

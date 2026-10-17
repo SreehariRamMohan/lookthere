@@ -1,0 +1,27 @@
+# TT-100K (the paper's run).
+# Phase 1 trains the extractor on all patches before RL.
+# It trains for 8430 steps at batch 32. The TT-100K RL configs start from this checkpoint.
+dataset: tt100k
+data_root: ./tt100k
+output_dir: runs/warmup_tt100k
+augment: default
+img_size: 1008
+batch_size: 32
+num_workers: 4
+
+steps: 8430
+schedule_steps: 8430            # Length of the cosine schedule
+lr: 5.0e-5                      # Learning rate of the extractor
+min_lr: 1.0e-6
+weight_decay: 0.01
+patch_drop: 0.0                 # No random patch dropping.
+patch_drop_start: 0.5
+
+# Selector architecture. The warmup only uses its CLS and register tokens.
+grid_stages: [6, 18, 37]
+beta_init: 0.25
+beta_max: 5.0
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+
+log_every: 5
+save_every: 8430

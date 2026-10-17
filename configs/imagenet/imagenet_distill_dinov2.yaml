@@ -1,0 +1,45 @@
+# ImageNet-1k distillation of DINOv2 (the paper's run).
+# The selector and the extractor start from pretrained DINOv2. They learn to match the CLS and patch
+# tokens of a frozen DINOv2 teacher that sees the full image. There are no labels.
+# Use the final checkpoint as `init` of the RL configs of other datasets.
+# The paper's run used 8 GPUs with batch size 32 each: `torchrun --nproc_per_node=8 train.py rl ...`.
+dataset: imagenet
+data_root: ./imagenet
+output_dir: runs/distill_imagenet_dinov2
+img_size: 518
+batch_size: 32
+num_workers: 4
+
+# Loss = cls_weight * MSE(CLS) + patch_weight * MSE(patches).
+loss: distillation
+cls_weight: 1.0
+patch_weight: 0.1
+
+# Hierarchical policy. Each stage adds one decision grid.
+# There are 100000 RL steps in total.
+grid_stages: [6, 9] # Use coarse grids for better selection credit assignment
+steps_per_stage: [50000, 50000]
+beta_init: 0.25
+beta_max: 5.0
+temperature: [1.0, 1.0]
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+entropy_coeff: [0.5, 0.35, 0.2]  # Entropy bonus at the start, middle and end of RL.
+
+# GRPO
+num_samples: 8                  # Number of masks sampled per image
+advantage_clip: 5.0
+min_group_std: 0.01
+
+# The reward is -loss + lam * sparsity_reward(mask). See train.sparsity_reward.
+# The keep rate target ramps from 0.5 to 0.3.
+lam: 0.2
+sparsity_target: [0.5, 0.3]
+
+# The cosine learning rate schedule runs over all RL steps.
+selector_lr: 2.0e-5
+extractor_lr: 5.0e-5
+min_lr: 1.0e-6
+weight_decay: 0.02
+
+log_every: 20
+save_every: 2000

@@ -1,0 +1,26 @@
+# Billiard Balls (the paper's run).
+# Phase 1 trains the extractor on all patches before RL.
+# It trains for 25000 steps (50 epochs at batch 16).
+dataset: billiards
+task: max-left-right            # One of max-left-right, rightmost-number or left-color-min-max
+data_root: ./billiards          # Downloaded on first use (19.7 GB archive)
+output_dir: runs/warmup_max-left-right
+img_size: 1008
+batch_size: 16
+num_workers: 4
+
+steps: 25000
+schedule_steps: 25000           # Length of the cosine schedule and of the patch drop ramp
+lr: 2.0e-5                      # Learning rate of the extractor. min_lr defaults to 0.1 x lr.
+weight_decay: 0.01
+patch_drop: 0.3                 # Drop patches at random. The drop probability grows from 0 to 0.3
+patch_drop_start: 0.5           # over the second half of the schedule.
+
+# Selector architecture. The warmup only uses its CLS and register tokens.
+grid_stages: [6, 18, 37]
+beta_init: 0.25
+beta_max: 5.0
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+
+log_every: 5
+save_every: 1000

@@ -1,0 +1,26 @@
+# ImageNet-1k (the paper's run).
+# Phase 1 trains the extractor on all patches before RL.
+# The paper's run used 8 GPUs with batch size 64 each (512 in total) for 125000 steps (50 epochs).
+# Run it with `torchrun --nproc_per_node=8 train.py warmup ...`. With fewer GPUs, change `steps` to match.
+dataset: imagenet
+data_root: ./imagenet
+output_dir: runs/warmup_imagenet
+img_size: 518
+batch_size: 64
+num_workers: 8
+
+steps: 125000
+schedule_steps: 125000           # Length of the cosine schedule and of the patch drop ramp
+lr: 5.0e-5                      # Learning rate of the extractor
+weight_decay: 0.01
+patch_drop: 0.3                 # Drop patches at random. The drop probability grows from 0 to 0.3
+patch_drop_start: 0.5           # over the second half of the schedule.
+
+# Selector architecture. The warmup only uses its CLS and register tokens.
+grid_stages: [6, 18, 37]
+beta_init: 0.25
+beta_max: 5.0
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+
+log_every: 100
+save_every: 5000

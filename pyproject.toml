@@ -1,0 +1,3 @@
+[tool.ty.rules]
+# ty misreads nn.Module.forward (a callable attribute) as a mutable field and rejects overrides.
+invalid-mutable-override = "ignore"

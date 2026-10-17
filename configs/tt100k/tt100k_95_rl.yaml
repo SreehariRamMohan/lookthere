@@ -1,0 +1,41 @@
+# TT-100K traffic signs at 95% sparsity (the paper's run).
+# Phase 2 trains the selector with GRPO and the extractor with cross-entropy.
+# The paper's run started from a warmup checkpoint of 8430 steps.
+# Download the `init` checkpoint from https://huggingface.co/SreehariRamMohan/lookthere first:
+#   hf download SreehariRamMohan/lookthere tt100k/warmup/model.pt --local-dir lookthere_ckpts
+dataset: tt100k
+data_root: ./tt100k
+output_dir: runs/rl_tt100k_95
+init: lookthere_ckpts/tt100k/warmup/model.pt
+augment: default
+img_size: 1008
+batch_size: 32
+num_workers: 4
+
+# Hierarchical policy. Each stage adds one decision grid.
+# There are 33720 RL steps in total.
+grid_stages: [6, 18, 37]
+steps_per_stage: [11240, 11240, 11240]
+beta_init: 0.25
+beta_max: 5.0
+temperature: [1.0, 0.3]         # Linear decay during RL.
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+entropy_coeff: [0.5, 0.1, 0.5]  # Entropy bonus at the start, middle and end of RL.
+
+# GRPO
+num_samples: 8
+advantage_clip: 5.0
+min_group_std: 0.01
+
+# The reward is -CE + lam * 1[correct] * sparsity_reward(mask). See train.sparsity_reward.
+lam: 2.0
+sparsity_target: 0.05
+
+# The cosine learning rate schedule continues the step count of the warmup (see train.run_rl).
+selector_lr: 2.0e-5
+extractor_lr: 5.0e-5
+min_lr: 1.0e-6
+weight_decay: 0.01
+
+log_every: 5
+save_every: 5000

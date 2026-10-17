@@ -1,0 +1,39 @@
+# Billiard Balls (max-left-right) at 99% sparsity (the paper's run).
+# Phase 2 trains the selector with GRPO and the extractor with cross-entropy.
+# It starts from the checkpoint of `python train.py warmup configs/billiards/billiards_warmup.yaml`.
+dataset: billiards
+task: max-left-right
+data_root: ./billiards
+output_dir: runs/rl_billiards_99
+init: runs/warmup_max-left-right/warmup.pt
+img_size: 1008
+batch_size: 32
+num_workers: 4
+
+# Hierarchical policy. Each stage adds one decision grid.
+# There are 10000 RL steps in total.
+grid_stages: [6, 18, 37]
+steps_per_stage: [3334, 3334, 3332]
+beta_init: 0.25
+beta_max: 5.0
+temperature: [1.0, 0.3]         # Linear decay during RL.
+logit_offset: 0.0               # Added to every keep logit (see modeling.Selector).
+entropy_coeff: [0.5, 0.1, 0.5]  # Entropy bonus at the start, middle and end of RL.
+
+# GRPO
+num_samples: 8
+advantage_clip: 5.0
+min_group_std: 0.01
+
+# The reward is -CE + lam * 1[correct] * sparsity_reward(mask). See train.sparsity_reward.
+lam: 2.0
+sparsity_target: 0.01
+
+# The cosine learning rate schedule continues the step count of the warmup (see train.run_rl).
+selector_lr: 2.0e-5
+extractor_lr: 5.0e-5
+min_lr: 1.0e-6
+weight_decay: 0.01
+
+log_every: 5
+save_every: 5000
