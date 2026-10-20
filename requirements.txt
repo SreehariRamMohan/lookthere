@@ -6,5 +6,6 @@ numpy==2.4.3
 pillow==12.1.1
 pyyaml==6.0.3
 datasets==5.1.0   # Birdsnap, TT-100K
+scikit-learn==1.8.0   # linear probe head when RL starts from a distillation checkpoint
 tqdm==4.67.3
 # optional, for logging: wandb==0.25.1

@@ -475,6 +475,41 @@ def load_distilled(selector, extractor, ckpt):
             raise RuntimeError(f"Cannot load the keys {wrong} from the distillation checkpoint.")
 
 
+@torch.no_grad()
+def fit_linear_probe(selector, extractor, cfg):
+    """Initialize the classification head with a logistic regression on frozen features, as in the paper.
+
+    The features are the CLS tokens of the extractor with all patches kept, on the training images
+    (with the training augmentation).
+    """
+    from sklearn.linear_model import LogisticRegression
+
+    def features(split):
+        data = DATASETS[cfg.dataset].load(cfg, split)
+        loader = DataLoader(data, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
+        feats, labels = [], []
+        for images, y in tqdm(loader, desc=f"linear probe: {split} features"):
+            images = images.cuda()
+            with torch.autocast("cuda", dtype=torch.bfloat16):
+                _, prefix = selector(images)
+                keep_mask = torch.ones(images.shape[0], selector.grid ** 2, dtype=torch.bool, device=images.device)
+                keep_idx, pad = mask_to_padded_indices(keep_mask)
+                feats.append(extractor(images, prefix, keep_idx, pad)["cls"].float().cpu())
+            labels.append(y)
+        return torch.cat(feats).numpy(), torch.cat(labels).numpy()
+
+    selector.eval()
+    extractor.eval()
+    train_x, train_y = features("train")
+    val_x, val_y = features("valid")
+    probe = LogisticRegression(max_iter=1000, C=0.316, solver="lbfgs", n_jobs=-1).fit(train_x, train_y)
+    extractor.head.weight.copy_(torch.from_numpy(probe.coef_))
+    extractor.head.bias.copy_(torch.from_numpy(probe.intercept_))
+    selector.train()
+    extractor.train()
+    print(f"Linear probe: val accuracy {probe.score(val_x, val_y):.4f} with all patches")
+
+
 def run_rl(cfg):
     """Phase 2: train the selector with GRPO and the extractor on the loss of the objective.
 
@@ -493,6 +528,8 @@ def run_rl(cfg):
     if ckpt is not None and ckpt["phase"] == "distill" and not cfg.resume:
         load_distilled(selector, extractor, ckpt)
         start_step = ckpt["step"]
+        if cfg.loss == "classification" and cfg.linear_probe and is_main():
+            fit_linear_probe(selector, extractor, cfg)  # the other GPUs get the head from the broadcast below
     elif ckpt is not None:
         selector.load_state_dict(ckpt["selector"])
         extractor.load_state_dict(ckpt["extractor"])
@@ -583,7 +620,7 @@ def run_eval(cfg):
 
 DEFAULTS = dict(dataset="billiards", loss="classification", augment="default", cutmix_alpha=0.0, label_smoothing=0.0,
                 seed=0, resume=None, init=None, ckpt=None, split="valid", deterministic=False, min_lr=None, logit_offset=0.0,
-                wandb_project=None, run_name=None, log_every=5, save_every=1000000)
+                wandb_project=None, run_name=None, log_every=5, save_every=1000000, linear_probe=True)
 
 
 def main():

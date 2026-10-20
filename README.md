@@ -134,7 +134,9 @@ torchrun --nproc_per_node=8 train.py rl configs/imagenet/imagenet_distill_dinov2
 ```
 
 It needs no warmup and no `init`. Pass its final checkpoint as `init` of another RL config to load
-the selector and extractor weights. The classification head starts new.
+the selector and extractor weights. For classification, the new head is then initialized with a
+linear probe (logistic regression on the CLS tokens with all patches kept), as in the paper.
+`linear_probe=false` starts it from random weights instead.
 
 ## Evaluation
 

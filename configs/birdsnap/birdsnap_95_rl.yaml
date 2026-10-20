@@ -1,7 +1,8 @@
 # Birdsnap at 95% sparsity (the paper's run).
 # Phase 2 trains the selector with GRPO and the extractor with cross-entropy.
 # The paper's run started from a warmup checkpoint distilled from a frozen DINOv2 (518 px, 100000 steps).
-# Train a similar one with configs/imagenet/imagenet_distill_dinov2.yaml.
+# Train a similar one with configs/imagenet/imagenet_distill_dinov2.yaml. The new 500-class head is
+# initialized with a linear probe on the frozen features before RL (see train.fit_linear_probe).
 # Download the `init` checkpoint from https://huggingface.co/SreehariRamMohan/lookthere first:
 #   hf download SreehariRamMohan/lookthere imagenet/distill_pretrain/model.pt --local-dir lookthere_ckpts
 dataset: birdsnap
